@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BibleVoice Screen</title>
+<style>
+html,body{margin:0;height:100%;background:#0b0d2e;color:#fff;font-family:Georgia,serif;overflow:hidden}
+#w{height:100%;display:flex;flex-direction:column;padding:5vh 6vw;box-sizing:border-box}
+#ref{font:700 4.6vmin system-ui,sans-serif;color:#9aa0ff;letter-spacing:.04em;min-height:1.2em;margin-bottom:2vh}
+#body{flex:1;min-height:0;display:flex;align-items:center}#txt{line-height:1.35;width:100%}
+#txt sup{font:600 .4em system-ui,sans-serif;color:#9aa0ff;margin-right:.3em}#idle{opacity:.6;text-align:center;font:5vmin system-ui,sans-serif}
+#lg{position:fixed;inset:0;background:#0b0d2e;display:none;flex-direction:column;justify-content:center;align-items:center;gap:12px;font-family:system-ui,sans-serif}#lg.on{display:flex}
+#lg input,#lg button{padding:14px;border-radius:12px;border:0;font:inherit;font-size:18px;width:280px}#lg button{background:#5b5bf0;color:#fff;font-weight:600}#le{color:#ff8a8a;min-height:1.3em}
+</style></head><body>
+<div id="w"><div id="ref"></div><div id="body"><div id="txt"></div></div></div>
+<div id="lg"><h2>BibleVoice Screen</h2><small>Sign in with the screen's own member account</small><input id="ln" placeholder="Name"><input id="lpw" type="password" placeholder="Password"><div id="le"></div><button id="go">Start</button></div>
+<script>
+const $=s=>document.querySelector(s),Q=new URLSearchParams(location.search);let es,ver=Q.get('v')||localStorage.sv||'';
+function fit(){const b=$('#body'),t=$('#txt');let s=Math.round(Math.min(innerWidth,innerHeight)*.1);t.style.fontSize=s+'px';while(t.offsetHeight>b.clientHeight&&s>14){s-=2;t.style.fontSize=s+'px'}}
+function idle(){$('#ref').textContent='';const d=document.createElement('div');d.id='idle';d.textContent='Listen · Find · Grow';$('#txt').replaceChildren(d);$('#txt').style.fontSize=''}
+async function show(m){const q=new URLSearchParams({b:m.b,c:m.c,version:ver});if(m.v1)q.set('v1',m.v1);if(m.v2)q.set('v2',m.v2);
+ const r=await(await fetch('/api/passage?'+q)).json();if(r.type!='passage')return;$('#ref').textContent=r.ref+' · '+r.version;
+ $('#txt').replaceChildren(...r.verses.map(v=>{const p=document.createElement('p'),s=document.createElement('sup');p.style.margin='0 0 .5em';s.textContent=v.verse;p.append(s,v.text);return p}));fit()}
+async function start(){if(!localStorage.tok)return $('#lg').classList.add('on');
+ const me=await fetch('/api/me?token='+localStorage.tok);if(me.status==401){delete localStorage.tok;return $('#lg').classList.add('on')}
+ $('#lg').classList.remove('on');if(!ver){const v=await(await fetch('/api/versions')).json();ver=(v.find(x=>x.is_default)||v[0]||{code:'KJV'}).code}localStorage.sv=ver;idle();
+ es=new EventSource('/api/stream?token='+localStorage.tok);es.onmessage=e=>{const m=JSON.parse(e.data);if(m.t=='end')idle();else if(m.t=='verse')show(m);else if(m.current)show(m.current)}}
+$('#go').onclick=async()=>{const f=new FormData();f.append('name',$('#ln').value);f.append('password',$('#lpw').value);const r=await fetch('/api/login',{method:'POST',body:f}),j=await r.json();
+ if(!r.ok){$('#le').textContent=j.detail||'Could not sign in';return}localStorage.tok=j.token;start()};
+document.body.addEventListener('dblclick',()=>document.documentElement.requestFullscreen?.());addEventListener('resize',()=>$('#txt').children.length>1&&fit());
+start();
+</script></body></html>

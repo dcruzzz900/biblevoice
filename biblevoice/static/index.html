@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b1f5e"><title>BibleVoice</title><link rel="manifest" href="/manifest.json"><link rel="icon" href="/icon.svg">
+<style>
+:root{--ink:#1c2150;--mut:#6b7090;--bg:#f4f5fb;--card:#fff;--ac:#5b5bf0;--ac2:#8a4df0;--line:#e4e6f2}
+@media(prefers-color-scheme:dark){:root{--ink:#eceeff;--mut:#a3a8cc;--bg:#12143a;--card:#1c1f4d;--line:#2c3066}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink);max-width:480px;margin:auto;min-height:100vh;padding-bottom:84px}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px}header b{color:var(--ac);font-size:20px}
+.hero{margin:0 16px;border-radius:18px;padding:22px 18px;background:linear-gradient(135deg,#2a2f7a,#14163f);color:#fff}
+.hero h2{margin:0 0 4px}.hero p{margin:0;opacity:.8}
+.mic{display:block;margin:-34px auto 0;width:84px;height:84px;border-radius:50%;border:4px solid var(--bg);background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:34px;cursor:pointer}
+.say{text-align:center;margin:8px 0 18px}.say small{display:block;color:var(--mut)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;color:var(--ink);font:inherit;cursor:pointer}
+.tile small{display:block;color:var(--mut)}
+.screen{display:none;padding:0 16px}.screen.on{display:block}
+h3{margin:8px 4px}.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;cursor:pointer}
+.row small{color:var(--mut)}.v{font:19px/1.7 Georgia,serif}.v sup{color:var(--ac);font:600 12px system-ui;margin-right:4px}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:12px;padding:13px;width:100%;font:600 16px system-ui;margin-top:10px;cursor:pointer}
+.btn.alt{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.bar{display:flex;gap:8px;margin:0 0 10px}.bar input{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:12px 0;background:none;border:0;color:var(--mut);font:12px system-ui;cursor:pointer}nav button.on{color:var(--ac);font-weight:700}
+#listen{position:fixed;inset:0;background:#10123a;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9;text-align:center;padding:24px}
+#listen.on{display:flex}canvas{width:100%;max-width:360px;height:90px}
+#tx{min-height:3em;font-size:19px;opacity:.9}.pill{display:inline-block;border-radius:20px;border:1px solid var(--line);padding:2px 10px;font-size:13px;color:var(--mut)}
+:focus-visible{outline:3px solid var(--ac2);outline-offset:2px}
+#lg{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;justify-content:center;gap:10px;padding:28px;z-index:20;max-width:480px;margin:auto}#lg.on{display:flex}
+#lg input{padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}#le{color:#d33;min-height:1.4em}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--ac);color:#fff;padding:10px 18px;border-radius:20px;opacity:0;transition:.3s;z-index:30;pointer-events:none}#toast.on{opacity:1}
+#sug{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);display:none;gap:8px;flex-wrap:wrap;justify-content:center;z-index:15;width:92%;max-width:460px}#sug.on{display:flex}
+#sug button{background:var(--ac);color:#fff;border:0;border-radius:20px;padding:10px 14px;font:600 14px system-ui;box-shadow:0 4px 14px #0004}
+</style></head><body>
+<div id="toast" role="status"></div><div id="sug" role="status"></div>
+<div id="lg"><h2 style="margin:0">BibleVoice</h2><small>Sign in to follow the service live and keep your notes on any phone.</small>
+ <input id="ln" placeholder="Your name" autocomplete="username"><input id="lpw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><input id="lcode" placeholder="Church code (only if your church set one)" autocomplete="off"><div id="le"></div>
+ <button class="btn" onclick="auth('login')">Log in</button><button class="btn alt" onclick="auth('register')">Create account</button></div>
+<header><b>BibleVoice</b><button class="pill" id="lp" style="cursor:pointer;background:none;color:var(--mut)">Not live</button><span class="pill" id="vcur">KJV</span></header>
+
+<section class="screen on" id="home">
+ <div class="hero"><h2>Welcome back</h2><p>Let’s grow in God’s Word today.</p></div>
+ <button class="mic" id="mic" aria-label="Tap to speak">🎙</button>
+ <div class="say"><b>Tap to speak</b><small>Say a verse, chapter, book or name</small></div>
+ <div class="bar"><input id="q" placeholder="Or type: John 3:16, Malachi 3:10, tithes…"><button class="tile" id="go">Go</button></div>
+ <div class="grid">
+  <button class="tile" data-go="versions"><b>Bible versions</b><small>Choose a version</small></button>
+  <button class="tile" data-go="recent"><b>Recent</b><small>Your last searches</small></button>
+  <button class="tile" id="live"><b>Operator</b><small id="livesub">Broadcast to members</small></button>
+  <button class="tile" id="ambt"><b>Auto-detect</b><small id="ambsub">Listen for verses</small></button>
+  <button class="tile" id="team" hidden><b>Admin</b><small>Team, log, passwords</small></button>
+  <button class="tile" id="out"><b>Sign out</b><small id="who"></small></button>
+  <button class="tile" data-go="favs"><b>Favorites</b><small>Saved verses</small></button>
+ </div>
+</section>
+
+<section class="screen" id="result"><h3 id="rt"></h3><div id="rb"></div>
+ <button class="btn" id="save">Save</button><textarea id="note" rows="3" placeholder="Add a personal note…" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit"></textarea>
+ <button class="btn" id="pushb" style="display:none">Show to all members</button>
+ <button class="btn alt" id="read">Read aloud</button><button class="btn alt" id="share">Share</button></section>
+<section class="screen" id="versions"><h3>Bible versions</h3><div id="vl"></div></section>
+<section class="screen" id="favs"><h3>Favorites</h3><div id="fl"></div></section>
+<section class="screen" id="recent"><h3>Recent searches</h3><div id="rl"></div></section>
+
+<nav><button class="on" data-go="home">Home</button><button data-go="versions">Versions</button><button data-go="recent">Recent</button><button id="navlive">Operator</button></nav>
+
+<div id="listen" role="dialog" aria-live="polite"><div id="lt">Listening…</div><canvas id="cv" width="360" height="90"></canvas>
+ <div id="tx">Say “John 3:16”, “Psalm 23” or “the book of Romans”</div><button class="btn alt" id="cancel" style="max-width:260px">Cancel</button></div>
+
+<script>
+let me={role:'member'},es,CFG={speech:'server'},bcast=false;const OPT=()=>me.role!='member'?(localStorage.tok||''):'';
+const $=s=>document.querySelector(s);const ls=(k,d)=>{try{return JSON.parse(localStorage[k])||d}catch{return d}},sv=(k,v)=>{localStorage[k]=JSON.stringify(v);syncSoon()};let ver=localStorage.ver||'KJV',stream,live=false,cur=null;
+$('#vcur').textContent=ver;
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id==id));
+ document.querySelectorAll('nav [data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go==id));
+ if(id=='versions')loadVers();if(id=='recent')loadRecent();if(id=='favs')loadFavs();scrollTo(0,0)}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function render(r){cur=r;if(r.type=='passage'){let h=ls('recent',[]).filter(x=>x.ref!=r.ref);h.unshift({ref:r.ref,version:r.version,at:new Date().toLocaleString()});sv('recent',h.slice(0,30))}
+ if(r.type=='passage'){$('#rt').innerHTML=`${esc(r.ref)} <span class="pill">${r.version}</span>`;
+  $('#rb').innerHTML=r.verses.map(v=>`<p class="v"><sup>${v.verse}</sup>${esc(v.text)}</p>`).join('');show('result');loadNote()}
+ else if(r.type=='search'){$('#rt').textContent=`Results for “${r.query}”`;
+  $('#rb').innerHTML=r.results.length?r.results.map(x=>`<div class="row" data-ref="${x.ref}"><b>${x.ref}</b><br><small>${esc(x.text)}</small></div>`).join(''):'<p>No matches in this version. Try another version or different words.</p>';
+  $('#rb').querySelectorAll('.row').forEach(e=>e.onclick=()=>lookup(e.dataset.ref));show('result')}
+ else{$('#tx').textContent='No verse found. Try again, e.g. “Romans 8”.'}}
+async function lookup(t){const r=await(await fetch(`/api/lookup?q=${encodeURIComponent(t)}&version=${ver}`)).json();render(r)}
+$('#go').onclick=()=>q.value&&lookup(q.value);q.onkeydown=e=>e.key=='Enter'&&$('#go').click();
+
+async function record(ms){ // records one clip, draws waveform, returns blob
+ const rec=new MediaRecorder(stream),ch=[];rec.ondataavailable=e=>ch.push(e.data);
+ const ac=new AudioContext(),an=ac.createAnalyser();ac.createMediaStreamSource(stream).connect(an);const d=new Uint8Array(an.fftSize),c=$('#cv').getContext('2d');
+ let on=true;(function draw(){if(!on)return;an.getByteTimeDomainData(d);c.clearRect(0,0,360,90);c.strokeStyle='#8a8cff';c.beginPath();
+  d.forEach((v,i)=>c.lineTo(i/d.length*360,45+(v-128)*.7));c.stroke();requestAnimationFrame(draw)})();
+ rec.start();await new Promise(r=>setTimeout(r,ms));rec.stop();await new Promise(r=>rec.onstop=r);on=false;ac.close();return new Blob(ch,{type:'audio/webm'})}
+async function send(blob){const f=new FormData();f.append('audio',blob);f.append('version',ver);f.append('token',localStorage.tok||'');f.append('broadcast',live&&OPT()?'1':'0');
+ const x=await fetch('/api/voice',{method:'POST',body:f});if(x.status==401)showLogin();return x.json()}
+async function mic(){try{stream??=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){alert('Allow microphone access to use voice.');return}
+ $('#listen').classList.add('on');$('#lt').textContent='Listening…';let stop=false;$('#cancel').onclick=()=>{if(live&&OPT())post('/api/service/end',{token:OPT()});stop=true;live=false;$('#listen').classList.remove('on');$('#livesub').textContent='Broadcast to members'};
+ do{const b=await record(live?7000:6000);if(stop)return;$('#lt').textContent='Finding verse…';const r=await send(b);if(r.auth===false){stop=true;live=false;$('#lt').textContent='Operator session expired. Cancel, then sign in again.';return}$('#tx').textContent='“'+(r.transcript||'…')+'”';
+  if(r.type=='passage'||(!live&&r.type=='search')){$('#listen').classList.remove('on');render(r);if(live)$('#listen').classList.remove('on');if(!live)return;
+   await new Promise(r=>setTimeout(r,100));$('#listen').classList.add('on');}
+  else if(!live){$('#lt').textContent='Not sure I caught that. Tap Cancel and try again.';return}
+  $('#lt').textContent='Listening…'}while(live&&!stop)}
+$('#mic').onclick=()=>{live=false;mic()};
+$('#live').onclick=$('#navlive').onclick=async()=>{
+ if(CFG.speech=='phone'){if(bcast){ambStop();return}if(amb)ambStop(); // light server: this phone recognises speech and sends only text
+  bcast=live=true;$('#livesub').textContent='Broadcasting · tap to stop';return ambStart()}
+ live=true;$('#livesub').textContent='Broadcasting';mic()};
+
+async function loadVers(){const v=await(await fetch('/api/versions')).json();
+ $('#vl').innerHTML=v.length?v.map(x=>`<div class="row" data-c="${x.code}"><b>${x.code}</b> ${esc(x.name)} ${x.code==ver?'✓':''}<br><small style="color:var(--mut)">${esc(x.credit||'')}</small></div>`).join('')
+  :'<p>No Bibles installed yet. Run import_bible.py (see README).</p>';
+ $('#vl').querySelectorAll('.row').forEach(e=>e.onclick=()=>{ver=localStorage.ver=e.dataset.c;$('#vcur').textContent=ver;loadVers()})}
+function loadRecent(){const r=ls('recent',[]);
+ $('#rl').innerHTML=r.length?r.map(x=>`<div class="row" data-ref="${x.ref}"><b>${x.ref}</b> <small>${x.version} · ${x.at}</small></div>`).join(''):'<p>Nothing yet. Speak or type a verse to start.</p>';
+ $('#rl').querySelectorAll('.row').forEach(e=>e.onclick=()=>lookup(e.dataset.ref))}
+const txt=()=>cur&&cur.type=='passage'?cur.ref+' ('+cur.version+')\n'+cur.verses.map(v=>v.verse+' '+v.text).join('\n'):'';
+$('#read').onclick=()=>{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(txt().replace(/\n/g,'. ')))};
+$('#share').onclick=()=>navigator.share?navigator.share({text:txt()}):navigator.clipboard.writeText(txt());
+const post=(u,o)=>{const f=new FormData();for(const k in o)f.append(k,o[k]);return fetch(u,{method:'POST',body:f}).then(r=>r.json())};
+// Favorites, notes and recent searches live on each phone, so members never see each other's.
+function loadNote(){$('#save').textContent=ls('favs',[]).some(x=>x.ref==cur.ref&&x.version==cur.version)?'Saved ✓':'Save';$('#note').value=ls('notes',{})[cur.ref]||'';$('#pushb').style.display=OPT()?'block':'none'}
+$('#save').onclick=()=>{if(cur?.type!='passage')return;let f=ls('favs',[]);const had=f.some(x=>x.ref==cur.ref&&x.version==cur.version);
+ f=had?f.filter(x=>!(x.ref==cur.ref&&x.version==cur.version)):[{ref:cur.ref,version:cur.version},...f];sv('favs',f);$('#save').textContent=had?'Save':'Saved ✓'};
+$('#note').onblur=()=>{if(cur?.type!='passage')return;const n=ls('notes',{});n[cur.ref]=$('#note').value;sv('notes',n)};
+$('#pushb').onclick=async()=>{const r=await post('/api/push',{token:OPT(),q:cur.ref,version:cur.version}).catch(()=>0);$('#pushb').textContent=r&&r.type=='passage'?'Sent ✓':'Could not send: sign in again'};
+function loadFavs(){const r=ls('favs',[]);$('#fl').innerHTML=r.length?r.map(x=>`<div class="row" data-ref="${x.ref}" data-v="${x.version}"><b>${x.ref}</b> <small>${x.version}</small></div>`).join(''):'<p>No saved verses yet. Open a verse and tap Save.</p>';
+ $('#fl').querySelectorAll('.row').forEach(e=>e.onclick=async()=>render(await(await fetch(`/api/lookup?q=${encodeURIComponent(e.dataset.ref)}&version=${e.dataset.v}`)).json()))}
+// Live service: the operator's phone broadcasts; every member's phone shows the verse in their own version.
+let follow=localStorage.follow!='0',first=true;
+function setLive(l){window.isLive=l;$('#lp').textContent=l?(follow?'● Live · following':'● Live · paused'):'Not live';$('#lp').style.color=l&&follow?'#e5383b':''}
+$('#lp').onclick=()=>{follow=!follow;localStorage.follow=follow?1:0;setLive(window.isLive)};
+async function showLive(m){if(!follow||!m)return;const q=new URLSearchParams({b:m.b,c:m.c,version:ver});if(m.v1)q.set('v1',m.v1);if(m.v2)q.set('v2',m.v2);
+ const r=await(await fetch('/api/passage?'+q)).json();if(r.type=='passage'){render(r);navigator.vibrate?.(80)}}
+function connect(){es&&es.close();first=true;es=new EventSource('/api/stream?token='+localStorage.tok);es.onmessage=e=>{const m=JSON.parse(e.data);if(m.t=='end')return setLive(false);setLive(m.live);
+ if(m.t=='verse'||(first&&m.current))showLive(m.t=='verse'?m:m.current);first=false}}
+if(!localStorage.ver)fetch('/api/versions').then(r=>r.json()).then(v=>{const d=v.find(x=>x.is_default);if(d){ver=d.code;$('#vcur').textContent=ver}});
+// ---- Auto-detect: this phone listens to the room (pastor's voice, loudspeakers, conversation) and opens verses by itself ----
+let amb=false,asr,wl,lastOpen={ref:'',t:0},sugT;const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const MIC={audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:true}}; // far-field pickup of speakers
+function ambUI(){$('#ambsub').textContent=amb?'On · tap to stop':'Listen for verses';$('#ambt').style.outline=amb?'2px solid #e5383b':''}
+async function detectText(t){if(t&&t.trim().length>3){const r=await post('/api/detect',{text:t,version:ver,token:localStorage.tok,broadcast:bcast&&OPT()?'1':'0'}).catch(()=>0);r&&handle(r)}}
+function handle(r){
+ if(r.action=='open'){const n=Date.now();if(lastOpen.ref==r.ref&&n-lastOpen.t<25000)return;lastOpen={ref:r.ref,t:n};render(r);navigator.vibrate?.(80);toast('Heard: '+r.ref)}
+ else if(r.action=='suggest'){$('#sug').innerHTML=r.items.map(i=>`<button data-ref="${esc(i.ref)}">${esc(i.label)} · ${esc(i.ref)}</button>`).join('');$('#sug').classList.add('on');
+  $('#sug').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#sug').classList.remove('on');lookup(b.dataset.ref)});clearTimeout(sugT);sugT=setTimeout(()=>$('#sug').classList.remove('on'),12000)}}
+function srLoop(){asr=new SR();asr.lang='en-NG';asr.continuous=true;asr.interimResults=false; // Nigerian English; Chrome needs internet for this
+ asr.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)detectText(e.results[i][0].transcript)};
+ asr.onerror=e=>{if(e.error=='not-allowed'||e.error=='service-not-allowed'){amb=false;ambUI();alert('Microphone is blocked for this app.')}else if(e.error=='network'){asr.onend=null;fallbackServer()}};
+ asr.onend=()=>amb&&setTimeout(()=>{try{asr.start()}catch{}},300);asr.start()}
+async function clip(ms){const rec=new MediaRecorder(stream),ch=[];rec.ondataavailable=e=>ch.push(e.data);const ac=new AudioContext(),an=ac.createAnalyser();ac.createMediaStreamSource(stream).connect(an);
+ const d=new Uint8Array(an.fftSize);let peak=0;const iv=setInterval(()=>{an.getByteTimeDomainData(d);let s=0;for(const v of d)s+=(v-128)**2;peak=Math.max(peak,Math.sqrt(s/d.length))},200);
+ rec.start();await new Promise(r=>setTimeout(r,ms));rec.stop();await new Promise(r=>rec.onstop=r);clearInterval(iv);ac.close();return{blob:new Blob(ch,{type:'audio/webm'}),loud:peak>4}}
+async function chunkLoop(){try{stream??=await navigator.mediaDevices.getUserMedia(MIC)}catch{alert('Allow the microphone to auto-detect verses.');amb=false;ambUI();return}
+ while(amb){const{blob,loud}=await clip(6000);if(!amb)break;if(!loud)continue; // silence is never sent
+  const f=new FormData();f.append('audio',blob);f.append('version',ver);f.append('token',localStorage.tok||'');f.append('ambient','1');
+  try{const x=await fetch('/api/voice',{method:'POST',body:f});if(x.status==401)showLogin();else if(x.ok)handle(await x.json())}catch{}}}
+const NATIVE=()=>!!(window.Capacitor?.isNativePlatform?.()&&Capacitor.Plugins?.SpeechRecognition);
+async function nativeLoop(){const S=Capacitor.Plugins.SpeechRecognition;let lang='en-NG',fails=0; // the phone's own recognizer (offline if its language pack is installed)
+ try{if(!(await S.available()).available)throw 0;if((await S.requestPermissions()).speechRecognition!='granted')throw 0}catch{toast('Phone speech not available');return fallbackServer()}
+ while(amb){try{const r=await S.start({language:lang,maxResults:1,partialResults:false,popup:false});fails=0;const t=r?.matches?.[0];t&&detectText(t)}
+  catch{if(++fails>=3&&lang=='en-NG'){lang='en-US';fails=0}await new Promise(r=>setTimeout(r,600))}}}
+function fallbackServer(){if(CFG.speech=='phone'){amb=false;if(bcast){bcast=live=false;$('#livesub').textContent='Listen to the pastor'}ambUI();toast('Speech needs Chrome with internet, or the BibleVoice app')}
+ else{toast('Using the church server for speech');chunkLoop()}}
+async function ambStart(){amb=true;ambUI();try{wl=await navigator.wakeLock?.request('screen')}catch{}NATIVE()?nativeLoop():SR?srLoop():fallbackServer()}
+function ambStop(){amb=false;if(bcast){bcast=live=false;$('#livesub').textContent='Listen to the pastor'}try{asr&&asr.stop()}catch{}try{NATIVE()&&Capacitor.Plugins.SpeechRecognition.stop()}catch{}wl?.release?.();ambUI()}
+$('#ambt').onclick=()=>amb?ambStop():ambStart();
+document.addEventListener('visibilitychange',async()=>{if(amb&&!document.hidden)try{wl=await navigator.wakeLock?.request('screen')}catch{}});
+let st;function syncSoon(){clearTimeout(st);st=setTimeout(()=>localStorage.tok&&post('/api/sync',{token:localStorage.tok,data:JSON.stringify({favs:ls('favs',[]),notes:ls('notes',{}),recent:ls('recent',[])})}).catch(()=>0),1500)}
+function toast(t){$('#toast').textContent=t;$('#toast').classList.add('on');setTimeout(()=>$('#toast').classList.remove('on'),3500)}
+function showLogin(){$('#lg').classList.add('on')}
+async function auth(kind){const r=await post('/api/'+kind,{name:$('#ln').value,password:$('#lpw').value,code:$('#lcode').value}).catch(()=>({detail:'Cannot reach the church server'}));
+ if(!r.token){$('#le').textContent=r.detail||'Something went wrong';return}localStorage.tok=r.token;$('#lpw').value='';init()}
+async function init(){if(!localStorage.tok)return showLogin();let m;try{const x=await fetch('/api/me?token='+localStorage.tok);if(x.status==401){delete localStorage.tok;return showLogin()}m=await x.json()}catch{return}
+ me=m;try{CFG=await(await fetch('/api/config')).json()}catch{}$('#lg').classList.remove('on');$('#who').textContent=me.name+' · '+me.role;const host=me.role!='member';
+ $('#live').hidden=$('#navlive').hidden=!host;$('#team').hidden=!host;
+ try{const s=await(await fetch('/api/sync?token='+localStorage.tok)).json();if(Object.keys(s).length)for(const k in s)localStorage[k]=JSON.stringify(s[k]);else syncSoon()}catch{}
+ connect()}
+$('#out').onclick=()=>{es&&es.close();post('/api/logout',{token:localStorage.tok,everywhere:confirm('Also sign out on all your other devices?')?1:0}).catch(()=>0);delete localStorage.tok;me={role:'member'};showLogin()};
+$('#team').onclick=()=>location.href='/admin';
+init();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');
+</script></body></html>

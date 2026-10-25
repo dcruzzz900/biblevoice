@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BibleVoice Admin</title>
+<style>
+:root{--ink:#1c2150;--mut:#6b7090;--bg:#f4f5fb;--card:#fff;--ac:#5b5bf0;--line:#e4e6f2}@media(prefers-color-scheme:dark){:root{--ink:#eceeff;--mut:#a3a8cc;--bg:#12143a;--card:#1c1f4d;--line:#2c3066}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink);max-width:760px;margin:auto;padding:16px}
+h1{font-size:22px;margin:6px 0}h2{font-size:17px;margin:22px 0 8px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}.row:last-child{border:0}
+button,input{font:inherit;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}button.p{background:var(--ac);color:#fff;border:0}
+.mut{color:var(--mut);font-size:14px}.pill{border:1px solid var(--line);border-radius:20px;padding:1px 10px;font-size:13px}#msg{color:#d33;min-height:1.4em}
+#lg{display:none;flex-direction:column;gap:10px;max-width:340px;margin:12vh auto}#lg.on{display:flex}#main{display:none}#main.on{display:block}
+</style></head><body>
+<div id="lg"><h1>BibleVoice Admin</h1><input id="ln" placeholder="Name"><input id="lpw" type="password" placeholder="Password"><div id="msg"></div><button class="p" id="go">Sign in</button></div>
+<div id="main"><h1>BibleVoice Admin</h1><div class="card" id="st"></div>
+<div id="usec"><h2>Members</h2><div class="card" id="users"></div></div>
+<h2>Service log</h2><div class="card"><div class="row"><span><input type="date" id="day"></span><span><button id="copy">Copy notes</button> <button class="p" id="dl">Download .txt</button></span></div><div id="log"></div></div></div>
+<script>
+const $=s=>document.querySelector(s),H=(t,p={},...c)=>{const e=document.createElement(t);Object.assign(e,p);e.append(...c);return e};
+const api=async(u,b)=>{const o={};if(b){const f=new FormData();for(const k in b)f.append(k,b[k]);Object.assign(o,{method:'POST',body:f})}
+ const r=await fetch(u,o),j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j.detail||'Error'),{status:r.status});return j};
+const T=()=>localStorage.tok||'';let logs=[];const ymd=d=>new Date(d*1000).toLocaleDateString('en-CA');
+async function load(){let s;try{s=await api('/api/admin/stats?token='+T())}catch(e){localStorage.tok&&e.status==403&&($('#msg').textContent='Pastor / media team accounts only.');delete localStorage.tok;return $('#lg').classList.add('on'),$('#main').classList.remove('on')}
+ $('#lg').classList.remove('on');$('#main').classList.add('on');
+ $('#st').replaceChildren(H('b',{},s.online+' connected device'+(s.online==1?'':'s')),' · ',s.live?'Live now':'Not live',s.current?' · On screen: '+s.current:'');
+ $('#usec').hidden=!s.users;if(s.users)$('#users').replaceChildren(...s.users.map(u=>H('div',{className:'row'},H('span',{},u.name+' ',H('span',{className:'pill'},u.role)),
+  u.role=='admin'?H('span',{className:'mut'},'admin'):H('span',{},
+   H('button',{onclick:()=>act('/api/role',{token:T(),name:u.name,role:u.role=='host'?'member':'host'})},u.role=='host'?'Make member':'Let broadcast'),' ',
+   H('button',{onclick:()=>{const p=prompt('New password for '+u.name+' (6+ characters)');p&&act('/api/admin/reset',{token:T(),name:u.name,password:p},'Password changed')}},'Reset password'),' ',
+   H('button',{onclick:()=>confirm('Remove '+u.name+'?')&&act('/api/admin/delete',{token:T(),name:u.name})},'Remove')))));
+ logs=await api('/api/log?token='+T());if(!$('#day').value)$('#day').value=ymd(Date.now()/1000);showLog()}
+async function act(u,b,ok){try{await api(u,b);ok&&alert(ok)}catch(e){alert(e.message)}load()}
+const day=()=>logs.filter(l=>ymd(l.at)==$('#day').value).reverse();
+const hhmm=t=>new Date(t*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+function showLog(){const l=day();$('#log').replaceChildren(...(l.length?l.map(x=>H('div',{className:'row'},H('span',{},H('b',{},x.ref)),H('span',{className:'mut'},hhmm(x.at)+(x.by?' · '+x.by:'')))):[H('p',{className:'mut'},'Nothing logged on this day.')]))}
+const notes=()=>'Service notes · '+$('#day').value+'\n'+day().map(x=>hhmm(x.at)+'  '+x.ref).join('\n');
+$('#day').onchange=showLog;$('#copy').onclick=()=>navigator.clipboard.writeText(notes()).then(()=>alert('Copied'));
+$('#dl').onclick=()=>{const a=H('a',{href:URL.createObjectURL(new Blob([notes()],{type:'text/plain'})),download:'service-notes-'+$('#day').value+'.txt'});a.click()};
+$('#go').onclick=async()=>{try{const r=await api('/api/login',{name:$('#ln').value,password:$('#lpw').value});localStorage.tok=r.token;$('#msg').textContent='';load()}catch(e){$('#msg').textContent=e.message}};
+load();setInterval(()=>localStorage.tok&&$('#main').classList.contains('on')&&load(),15000);
+</script></body></html>
