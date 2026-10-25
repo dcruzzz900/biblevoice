@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pem
+cert.ip
+bible.db
+.env
+node_modules/

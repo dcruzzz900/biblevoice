@@ -1,0 +1,17 @@
+# Hosting online: members follow from home or on mobile data. Needs a domain pointing at this server (ports 80/443 open).
+services:
+  app:
+    build:
+      context: .
+      args: {LIGHT: "${LIGHT:-0}"}   # LIGHT=1 in .env = light server (no speech model, tiny RAM)
+    restart: unless-stopped
+    environment: [WHISPER_MODEL=${WHISPER_MODEL:-small}, API_BIBLE_KEY=${API_BIBLE_KEY:-}, SESSION_DAYS=${SESSION_DAYS:-60}]
+    volumes: [data:/data, models:/root/.cache/huggingface]
+  caddy:   # automatic HTTPS certificates
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: [DOMAIN=${DOMAIN:?put DOMAIN=bible.yourchurch.org in a .env file}]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy:/data"]
+    depends_on: [app]
+volumes: {data: {}, models: {}, caddy: {}}

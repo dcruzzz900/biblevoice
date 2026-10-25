@@ -1,0 +1,2 @@
+{"appId":"org.yourchurch.biblevoice","appName":"BibleVoice","webDir":"static",
+ "server":{"url":"https://YOUR-CHURCH-SERVER-ADDRESS","cleartext":false}}
