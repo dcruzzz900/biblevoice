@@ -1,0 +1,17 @@
+# Render Blueprint, FREE plan. Fine for a rehearsal or demo, NOT for real services:
+# free instances sleep after 15 idle minutes and lose all data (accounts, favorites, log). See README, "Deploy on Render".
+services:
+  - type: web
+    name: biblevoice
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-light.txt
+    startCommand: python render_boot.py && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/config
+    envVars:
+      - key: LIGHT
+        value: "1"
+      - key: ADMIN_SETUP_CODE
+        sync: false
+      - key: JOIN_CODE
+        sync: false

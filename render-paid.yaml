@@ -1,0 +1,23 @@
+# Render Blueprint, PAID plan with a persistent disk: accounts, notes and the log survive restarts and redeploys.
+# To use it: rename this file to render.yaml (replacing the free one) before creating the Blueprint.
+services:
+  - type: web
+    name: biblevoice
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements-light.txt
+    startCommand: python render_boot.py && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/config
+    envVars:
+      - key: LIGHT
+        value: "1"
+      - key: DATA_DIR
+        value: /data
+      - key: ADMIN_SETUP_CODE
+        sync: false
+      - key: JOIN_CODE
+        sync: false
+    disk:
+      name: biblevoice-data
+      mountPath: /data
+      sizeGB: 1
